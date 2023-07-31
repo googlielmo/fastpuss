@@ -1,11 +1,33 @@
-# FASTPUSS 🐾
+# FASTPUSS (🐾)
 
-A proof of concept for a fast pub-sub system.
+A proof of concept for a fast pub-sub system that can scale to millions of topics and subscribers.
 
-## A non-distributed message broker
+## Theory of operation
 
-The heart of the system is
-the [ThreadSafeSubscriberManager](src/main/java/io/github/googlielmo/fastpuss/ThreadSafeSubscriberManager.java).
+A Fastpuss (🐾) system consists of one or more message broker(s) and an unlimited number of clients.
+
+Clients communicate with brokers over UDP.
+
+In a distributed configuration (see below), brokers communicate with one another over TCP.
+
+Each client can subscribe to any number of topics by sending a subscription request to a broker.
+
+Topics are completely _dynamic_, meaning that they don't have to be instantiated beforehand, and _ephemeral_, meaning
+they exist only as long as they are in usage by one or more clients.
+
+A client can publish a message to a specific topic by sending it to a broker. One-shot publishing to more than one topic
+is not supported. Upon receiving the message, the broker will forward the message contents to the subscribed clients for
+that topic.
+
+## LICENSE
+
+
+
+## PoC implementation
+
+Subscription data mapping topics to data is implemented within
+the [ThreadSafeSubscriberManager](src/main/java/io/github/googlielmo/fastpuss/ThreadSafeSubscriberManager.java) class.
+
 The single-node [MessageBroker](src/main/java/io/github/googlielmo/fastpuss/MessageBroker.java),
 [MessagePublisher](src/main/java/io/github/googlielmo/fastpuss/MessagePublisher.java), and
 [MessageSubscriber](src/main/java/io/github/googlielmo/fastpuss/MessageSubscriber.java)
@@ -25,10 +47,10 @@ You can run it directly with Maven:
 
 For the Subscriber Manager:
 
-- A Map holds the subscription state: the keys are topic filters (strings) and the values are Collections of client ids.
-- Client ids are strings in the form "/host:port".
+- A Map holds the subscription state: the keys are topic filters (strings) and the values are Collections of client IDs.
+- Client IDs are strings in the form "/host:port".
 - A `ConcurrentHashMap` is used, so to allow concurrent, thread-safe operations.
-- The collection type chosen to hold client ids is the `ConcurrentLinkedDeque`, which offers concurrent, thread-safe
+- The collection type chosen to hold client IDs is the `ConcurrentLinkedDeque`, which offers concurrent, thread-safe
   operations with some useful properties, such as _weakly consistent_ iterators, which allow iterating over the
   collection itself even in the face of concurrent modification. This is quite useful to avoid expensive copy operations
   of (potentially) millions of elements to an immutable temporary copy, which would be necessary to avoid concurrent
@@ -39,7 +61,7 @@ For the Subscriber Manager:
 For the Broker:
 
 - UDP is used as the transport protocol for the individual messages
-- As wildcards are out-of-scope, the topic filters are in fact just the topic names
+- Wildcards will be implemented in the future, therefore at the moment topic filters are in fact just topic names
 - Topic names cannot contain spaces, so that parsing messages becomes trivial (see [Message format](#message-format)
   below)
 
@@ -53,7 +75,7 @@ verb        = 'PUB' | 'SUB' | 'MSG' ;
 S           = { white space } ;
 topic       = ? a valid, non-empty sequence of utf-8 characters, excluding white space ? ;
 body        = ? a valid, possibly empty sequence of utf-8 characters, including white space ? ;
-white space = ? white space as per regexp /\s/ ?
+white space = ? white space as per regexp /\s/ ? ;
 ```
 
 #### Message types
@@ -80,10 +102,10 @@ A different verb is used in messages sent by the broker to the clients:
   41.8874314503 12.4886930452
   ```
 
-## Extension: A distributed message broker
+## Distributed broker implementation (Work in progress)
 
-The [DistributedBroker](src/main/java/io/github/googlielmo/fastpuss/DistributedBroker.java) contains the implementation
-for a distributed message broker.
+The [DistributedBroker](src/main/java/io/github/googlielmo/fastpuss/DistributedBroker.java) class implements a
+distributed message broker as an extension of the standalone broker.
 
 ### Design decisions
 
@@ -120,7 +142,7 @@ It consists of lines of utf-8 text in the form:
     client-id-n
     <empty line>
 
-An empty line signals that the next non-empty line starts a new topic with the list of client ids.
+An empty line signals that the next non-empty line starts a new topic with the list of client IDs.
 
 ### Traffic sizing
 
@@ -161,7 +183,7 @@ Data partitioning:
 Dynamic addition and removal of nodes:
 
 - The configuration is not immutable anymore, instead there is a static startup config and a dynamic one that overrides
-  the first.
+  the former.
 - Possibly one or more node discovery techniques can be employed to autoconfigure a new node based on the particular
   environment constraints (LAN, specific cloud such as AWS, Kubernetes, etc.)
 - The partitioning (if implemented) needs to be independent of the number of nodes. This can be achieved by creating a
