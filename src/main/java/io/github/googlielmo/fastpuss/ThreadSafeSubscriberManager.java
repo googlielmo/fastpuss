@@ -12,11 +12,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-class ThreadSafeSubscriberManager {
+public class ThreadSafeSubscriberManager {
 
     final Map<String, Collection<String>> topicMap = new ConcurrentHashMap<>();
 
-    void addSubscription(final @NotNull String topicFilter, final @NotNull String clientId) {
+    public void addSubscription(final @NotNull String topicFilter, final @NotNull String clientId) {
         final Collection<String> oneElement = new ConcurrentLinkedDeque<>(List.of(clientId));
         topicMap.merge(topicFilter, oneElement,
                 (list, singleton) -> {
@@ -25,13 +25,10 @@ class ThreadSafeSubscriberManager {
                 });
     }
 
-    @NotNull Collection<String> getMatchingSubscribers(final @NotNull String topic) {
+    @NotNull
+    public Collection<String> getMatchingSubscribers(final @NotNull String topic) {
         return topicMap.getOrDefault(topic, Collections.emptyList());
     }
-
-    //////////////////////////////////////////////////////////////
-    // the following methods are only used by DistributedBroker //
-    //////////////////////////////////////////////////////////////
 
     protected void marshal(Writer w) throws IOException {
         for (Map.Entry<String, Collection<String>> entry : topicMap.entrySet()) {
