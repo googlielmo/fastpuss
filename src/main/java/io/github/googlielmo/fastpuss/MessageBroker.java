@@ -1,10 +1,7 @@
 package io.github.googlielmo.fastpuss;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketException;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
@@ -74,7 +71,7 @@ public class MessageBroker {
     private DatagramSocket createBrokerSocket(int port) throws SocketException {
         DatagramSocket socket = new DatagramSocket(null);
         socket.setReceiveBufferSize(RCV_BUF_SIZE);
-        socket.bind(new InetSocketAddress(port));
+        socket.bind(new InetSocketAddress(port)); // UDP *:10000
         return socket;
     }
 

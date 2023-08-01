@@ -3,6 +3,7 @@ package io.github.googlielmo.fastpuss;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
@@ -29,7 +30,7 @@ public class MessageSubscriber implements Runnable {
     }
 
     public MessageSubscriber(int port) {
-        this(port, new InetSocketAddress("127.0.0.1", 10000));
+        this(port, new InetSocketAddress(InetAddress.getLoopbackAddress(), 10000));
     }
 
     public MessageSubscriber(int port, InetSocketAddress brokerSocket) {

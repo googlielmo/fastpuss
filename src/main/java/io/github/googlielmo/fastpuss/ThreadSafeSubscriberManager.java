@@ -11,8 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.logging.Logger;
 
 public class ThreadSafeSubscriberManager {
+
+    private static final Logger logger = Logger.getLogger("ThreadSafeSubscriberManager");
 
     final Map<String, Collection<String>> topicMap = new ConcurrentHashMap<>();
 
@@ -27,7 +30,14 @@ public class ThreadSafeSubscriberManager {
 
     @NotNull
     public Collection<String> getMatchingSubscribers(final @NotNull String topic) {
-        return topicMap.getOrDefault(topic, Collections.emptyList());
+        Collection<String> subs = topicMap.getOrDefault(topic, Collections.emptyList());
+        if (subs.isEmpty()) {
+            logger.info("no subscription for " + topic);
+        }
+        else {
+            logger.info(String.format("msg for %s, subscriptions: %s", topic, subs));
+        }
+        return subs;
     }
 
     protected void marshal(Writer w) throws IOException {

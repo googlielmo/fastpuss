@@ -2,6 +2,7 @@ package io.github.googlielmo.fastpuss;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Random;
 import java.util.logging.Level;
@@ -22,7 +23,7 @@ public class MessagePublisher implements Runnable {
     }
 
     public MessagePublisher(int port) {
-        this(port, new InetSocketAddress("localhost", 10000));
+        this(port, new InetSocketAddress(InetAddress.getLoopbackAddress(), 10000));
     }
 
     public MessagePublisher(int port, InetSocketAddress brokerSocket) {
@@ -33,7 +34,7 @@ public class MessagePublisher implements Runnable {
     @Override
     public void run() {
 
-        try (DatagramSocket socket = new DatagramSocket(port)) {
+        try (DatagramSocket socket = new DatagramSocket(port, InetAddress.getLoopbackAddress())) {
             Random rand = new Random();
             while (!Thread.currentThread().isInterrupted()) {
                 try {
