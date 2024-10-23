@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
 import static java.util.logging.Level.SEVERE;
@@ -16,8 +15,6 @@ import static java.util.logging.Level.WARNING;
 public class DistributedBroker extends MessageBroker {
 
     private static final Logger logger = Logger.getLogger("DistributedBroker");
-
-    private final ReentrantLock lock = new ReentrantLock();
 
     public static class ClusterConfig {
         int syncPort; // for this node
@@ -70,30 +67,25 @@ public class DistributedBroker extends MessageBroker {
     }
 
     private void pushSyncData(String topic, String clientId) {
-        lock.lock();
-        try {
-            Random rand = new Random();
-            int numNodes = config.nodes.size();
-            int startNode = rand.nextInt(numNodes);
+        Random rand = new Random();
+        int numNodes = config.nodes.size();
+        int startNode = rand.nextInt(numNodes);
 
-            for (int i = 0; i < numNodes; i++) {
-                try {
-                    InetSocketAddress node = config.nodes.get((startNode + i) % numNodes);
-                    if (isLocalAddress(node.getAddress())) {
-                        continue;
-                    }
-                    logger.info("sending sync data to node " + node);
-                    Socket socket = new Socket();
-                    socket.connect(node);
-                    new OutputStreamWriter(socket.getOutputStream()).write("PUSH\n");
-                    sendSyncDataUpdate(socket, topic, clientId);
-                    socket.close();
-                } catch (IOException e) {
-                    logger.log(SEVERE, "sync error", e);
+        for (int i = 0; i < numNodes; i++) {
+            try {
+                InetSocketAddress node = config.nodes.get((startNode + i) % numNodes);
+                if (isLocalAddress(node.getAddress())) {
+                    continue;
                 }
+                logger.info("sending sync data to node " + node);
+                Socket socket = createSocket();
+                socket.connect(node);
+                new OutputStreamWriter(socket.getOutputStream()).write("PUSH\n");
+                sendSyncDataUpdate(socket, topic, clientId);
+                socket.close();
+            } catch (IOException e) {
+                logger.log(SEVERE, "sync error", e);
             }
-        } finally {
-            lock.unlock();
         }
     }
 
@@ -113,22 +105,17 @@ public class DistributedBroker extends MessageBroker {
                 Socket socket = serverSocket.accept();
                 logger.info("new sync request from " + socket.getInetAddress().getHostAddress() + ":" + socket.getPort());
                 String cmd = new BufferedReader(new InputStreamReader(socket.getInputStream())).readLine();
-                lock.lock();
-                try {
-                    switch (cmd) {
-                        case "PULL":
-                            sendSyncData(socket);
-                            break;
+                switch (cmd) {
+                    case "PULL":
+                        sendSyncData(socket);
+                        break;
 
-                        case "PUSH":
-                            receiveSyncData(socket);
-                            break;
+                    case "PUSH":
+                        receiveSyncData(socket);
+                        break;
 
-                        default:
-                            logger.log(WARNING, "unknown verb " + cmd);
-                    }
-                } finally {
-                    lock.unlock();
+                    default:
+                        logger.log(WARNING, "unknown verb " + cmd);
                 }
                 socket.close();
             } catch (IOException e) {
@@ -154,32 +141,27 @@ public class DistributedBroker extends MessageBroker {
         }
     }
 
-    void pullSyncData() {
-        lock.lock();
-        try {
-            Random rand = new Random();
-            int numNodes = config.nodes.size();
-            int startNode = rand.nextInt(numNodes);
+    private void pullSyncData() {
+        Random rand = new Random();
+        int numNodes = config.nodes.size();
+        int startNode = rand.nextInt(numNodes);
 
-            for (int i = 0; i < numNodes; i++) {
-                try {
-                    InetSocketAddress node = config.nodes.get((startNode + i) % numNodes);
-                    if (isLocalAddress(node.getAddress())) {
-                        continue;
-                    }
-                    logger.info("requesting sync data from node " + node);
-                    Socket socket = new Socket();
-                    socket.connect(node);
-                    new OutputStreamWriter(socket.getOutputStream()).write("PULL\n");
-                    receiveSyncData(socket);
-                    socket.close();
-                    return;
-                } catch (IOException e) {
-                    logger.log(SEVERE, "sync error", e);
+        for (int i = 0; i < numNodes; i++) {
+            try {
+                InetSocketAddress node = config.nodes.get((startNode + i) % numNodes);
+                if (isLocalAddress(node.getAddress())) {
+                    continue;
                 }
+                logger.info("requesting sync data from node " + node);
+                Socket socket = createSocket();
+                socket.connect(node);
+                new OutputStreamWriter(socket.getOutputStream()).write("PULL\n");
+                receiveSyncData(socket);
+                socket.close();
+                return;
+            } catch (IOException e) {
+                logger.log(SEVERE, "sync error", e);
             }
-        } finally {
-            lock.unlock();
         }
     }
 
@@ -203,5 +185,9 @@ public class DistributedBroker extends MessageBroker {
         } catch (SocketException e) {
             return false;
         }
+    }
+
+    protected Socket createSocket() {
+        return new Socket();
     }
 }
